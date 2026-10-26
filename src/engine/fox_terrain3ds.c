@@ -152,24 +152,48 @@ bool Terrain3DS_Active(void) {
     return Terrain3DS_GetLevel() != NULL;
 }
 
-// N64 scenery that the 3DS terrain already contains (hills, rock walls, seabed bumps, mountains).
-// Only their drawing is skipped; collision and game logic are untouched.
+static const s16 sHide_Corneria[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 24, 25, 26, 27, 28, 54, 55 };
+static const s16 sHide_Macbeth[] = { 59, 60, 62, 63, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75 };
+static const s16 sHide_Aquas[] = { 117, 118, 119, 120, 121, 122, 124, 125 };
+static const s16 sHide_Venom1[] = { 50, 51, 53 };
+static const s16 sHide_Venom2[] = { 160 };
+
+// N64 scenery that SF64 3D never draws on these levels: its object info table points them at models the level
+// doesn't load, because the terrain already contains them (hills, cliffs, highways, roads, ...).
+// Only drawing is skipped; collision and game logic are untouched.
 bool Terrain3DS_HidesScenery(s32 id) {
+    const s16* list = NULL;
+    s32 n = 0;
+    s32 i;
+
     if (!Terrain3DS_Active()) {
         return false;
     }
     switch (gCurrentLevel) {
         case LEVEL_CORNERIA:
-            return ((id >= OBJ_SCENERY_CO_BUMP_1) && (id <= OBJ_SCENERY_CO_BUMP_5)) || (id == OBJ_SCENERY_CO_ROCKWALL);
+            list = sHide_Corneria; n = ARRAY_COUNT(sHide_Corneria);
+            break;
         case LEVEL_MACBETH:
-            return id == OBJ_SCENERY_MA_TERRAIN_BUMP;
+            list = sHide_Macbeth; n = ARRAY_COUNT(sHide_Macbeth);
+            break;
         case LEVEL_AQUAS:
-            return (id == OBJ_SCENERY_AQ_BUMP_1) || (id == OBJ_SCENERY_AQ_BUMP_2);
+            list = sHide_Aquas; n = ARRAY_COUNT(sHide_Aquas);
+            break;
+        case LEVEL_VENOM_1:
+            list = sHide_Venom1; n = ARRAY_COUNT(sHide_Venom1);
+            break;
         case LEVEL_VENOM_2:
-            return id == OBJ_SCENERY_VE2_MOUNTAIN;
+            list = sHide_Venom2; n = ARRAY_COUNT(sHide_Venom2);
+            break;
         default:
             return false;
     }
+    for (i = 0; i < n; i++) {
+        if (list[i] == id) {
+            return true;
+        }
+    }
+    return false;
 }
 
 static void Terrain3DS_DrawSector(const Terrain3DSSector* s, f32 zShift) {
