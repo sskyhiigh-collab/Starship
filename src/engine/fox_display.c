@@ -9,6 +9,9 @@
 #include "port/hooks/list/EngineEvent.h"
 #include "port/mods/PortEnhancements.h"
 
+bool Terrain3DS_Active(void);
+void Terrain3DS_Draw(void);
+
 // f32 path1 = 0.0f;
 // f32 path2 = 0.0f;
 
@@ -1908,9 +1911,13 @@ void Display_Update(void) {
             Matrix_Push(&gGfxMatrix);
             Matrix_Translate(gGfxMatrix, 0.0f, gCameraShakeY, 0.0f, MTXF_APPLY);
             Matrix_SetGfxMtx(&gMasterDisp);
-            Ground_801B58AC(&gMasterDisp, gPathGroundScroll);
+            // @port: the 3DS terrain replaces Titania's N64 ground when the terrain mod is installed
+            if (!Terrain3DS_Active()) {
+                Ground_801B58AC(&gMasterDisp, gPathGroundScroll);
+            }
             gPathGroundScroll = 0.0f;
             Matrix_Pop(&gGfxMatrix);
+            Terrain3DS_Draw();
         } else if (gGroundSurface != SURFACE_WATER) {
             D_bg_8015F964 = false;
             FrameInterpolation_RecordOpenChild("Ground", 0);

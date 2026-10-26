@@ -23,6 +23,9 @@
 
 #include "prevent_bss_reordering2.h"
 #include "port/interpolation/FrameInterpolation.h"
+
+void Terrain3DS_Draw(void);
+f32 Terrain3DS_GroundDrop(void);
 // #include "prevent_bss_reordering3.h"
 
 #include "water_effect.inc"
@@ -1370,7 +1373,8 @@ void Background_DrawGround(void) {
     }
 
     Matrix_Push(&gGfxMatrix);
-    Matrix_Translate(gGfxMatrix, gPlayer[gPlayerNum].xPath, -3.0f + gCameraShakeY, sp1D4, MTXF_APPLY);
+    Matrix_Translate(gGfxMatrix, gPlayer[gPlayerNum].xPath, -3.0f + gCameraShakeY - Terrain3DS_GroundDrop(), sp1D4,
+                     MTXF_APPLY);
 
     if (gFovYMode == 2) {
         Matrix_Scale(gGfxMatrix, 1.2f, 1.2f, 1.0f, MTXF_APPLY);
@@ -2235,6 +2239,9 @@ void Background_DrawGround(void) {
             break;
     }
     Matrix_Pop(&gGfxMatrix);
+
+    // @port: Star Fox 64 3D terrain (only when the terrain mod is installed)
+    Terrain3DS_Draw();
 }
 
 // Unused. Early water implementation in Aquas?
