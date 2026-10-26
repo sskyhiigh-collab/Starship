@@ -25,7 +25,7 @@
 #include "port/interpolation/FrameInterpolation.h"
 
 void Terrain3DS_Draw(void);
-f32 Terrain3DS_GroundDrop(void);
+bool Terrain3DS_Active(void);
 // #include "prevent_bss_reordering3.h"
 
 #include "water_effect.inc"
@@ -1373,8 +1373,7 @@ void Background_DrawGround(void) {
     }
 
     Matrix_Push(&gGfxMatrix);
-    Matrix_Translate(gGfxMatrix, gPlayer[gPlayerNum].xPath, -3.0f + gCameraShakeY - Terrain3DS_GroundDrop(), sp1D4,
-                     MTXF_APPLY);
+    Matrix_Translate(gGfxMatrix, gPlayer[gPlayerNum].xPath, -3.0f + gCameraShakeY, sp1D4, MTXF_APPLY);
 
     if (gFovYMode == 2) {
         Matrix_Scale(gGfxMatrix, 1.2f, 1.2f, 1.0f, MTXF_APPLY);
@@ -1384,7 +1383,8 @@ void Background_DrawGround(void) {
 
     switch (gCurrentLevel) {
         case LEVEL_CORNERIA:
-            if (gGroundClipMode != 0) {
+            // @port: with the 3DS terrain, the N64 ground is a depth-less backdrop so it can't cut through the terrain
+            if ((gGroundClipMode != 0) && !Terrain3DS_Active()) {
                 RCP_SetupDL_29(gFogRed, gFogGreen, gFogBlue, gFogAlpha, gFogNear, gFogFar);
             } else {
                 RCP_SetupDL_20(gFogRed, gFogGreen, gFogBlue, gFogAlpha, gFogNear, gFogFar);
@@ -1492,7 +1492,11 @@ void Background_DrawGround(void) {
 
         case LEVEL_VENOM_1:
         case LEVEL_MACBETH:
-            RCP_SetupDL_29(gFogRed, gFogGreen, gFogBlue, gFogAlpha, gFogNear, gFogFar);
+            if (Terrain3DS_Active()) {
+                RCP_SetupDL_20(gFogRed, gFogGreen, gFogBlue, gFogAlpha, gFogNear, gFogFar);
+            } else {
+                RCP_SetupDL_29(gFogRed, gFogGreen, gFogBlue, gFogAlpha, gFogNear, gFogFar);
+            }
             switch (gCurrentLevel) {
                 case LEVEL_VENOM_1:
                     sp1C4 = D_VE1_6006750;
@@ -1614,7 +1618,11 @@ void Background_DrawGround(void) {
             sp1C0 = trainingGroundDL_FIX;
             gDPLoadTextureBlock(gMasterDisp++, sp1C4, G_IM_FMT_RGBA, G_IM_SIZ_16b, 32, 32, 0, G_TX_NOMIRROR | G_TX_WRAP,
                                 G_TX_NOMIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD);
-            RCP_SetupDL_29(gFogRed, gFogGreen, gFogBlue, gFogAlpha, gFogNear, gFogFar);
+            if (Terrain3DS_Active()) {
+                RCP_SetupDL_20(gFogRed, gFogGreen, gFogBlue, gFogAlpha, gFogNear, gFogFar);
+            } else {
+                RCP_SetupDL_29(gFogRed, gFogGreen, gFogBlue, gFogAlpha, gFogNear, gFogFar);
+            }
 
             if (gLevelMode == LEVELMODE_ON_RAILS) {
                 // if (gPathTexScroll > (32.0f * 36.7f) / 2.0f) {
@@ -1916,7 +1924,7 @@ void Background_DrawGround(void) {
         case LEVEL_KATINA:
         case LEVEL_BOLSE:
         case LEVEL_VENOM_2:
-            if ((gGroundClipMode != 0) || (gCurrentLevel == LEVEL_BOLSE)) {
+            if (((gGroundClipMode != 0) || (gCurrentLevel == LEVEL_BOLSE)) && !Terrain3DS_Active()) {
                 RCP_SetupDL_29(gFogRed, gFogGreen, gFogBlue, gFogAlpha, gFogNear, gFogFar);
             } else {
                 RCP_SetupDL_20(gFogRed, gFogGreen, gFogBlue, gFogAlpha, gFogNear, gFogFar);

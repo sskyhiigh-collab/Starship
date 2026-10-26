@@ -152,9 +152,24 @@ bool Terrain3DS_Active(void) {
     return Terrain3DS_GetLevel() != NULL;
 }
 
-// How far to sink the N64 ground plane so it stays under the 3DS terrain as a horizon backdrop.
-f32 Terrain3DS_GroundDrop(void) {
-    return Terrain3DS_Active() ? 250.0f : 0.0f;
+// N64 scenery that the 3DS terrain already contains (hills, rock walls, seabed bumps, mountains).
+// Only their drawing is skipped; collision and game logic are untouched.
+bool Terrain3DS_HidesScenery(s32 id) {
+    if (!Terrain3DS_Active()) {
+        return false;
+    }
+    switch (gCurrentLevel) {
+        case LEVEL_CORNERIA:
+            return ((id >= OBJ_SCENERY_CO_BUMP_1) && (id <= OBJ_SCENERY_CO_BUMP_5)) || (id == OBJ_SCENERY_CO_ROCKWALL);
+        case LEVEL_MACBETH:
+            return id == OBJ_SCENERY_MA_TERRAIN_BUMP;
+        case LEVEL_AQUAS:
+            return (id == OBJ_SCENERY_AQ_BUMP_1) || (id == OBJ_SCENERY_AQ_BUMP_2);
+        case LEVEL_VENOM_2:
+            return id == OBJ_SCENERY_VE2_MOUNTAIN;
+        default:
+            return false;
+    }
 }
 
 static void Terrain3DS_DrawSector(const Terrain3DSSector* s, f32 zShift) {

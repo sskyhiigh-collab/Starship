@@ -6,6 +6,8 @@
 #include "prevent_bss_reordering.h"
 #include "global.h"
 #include "sf64object.h"
+
+bool Terrain3DS_HidesScenery(s32 id);
 #include "assets/ast_katina.h"
 #include "assets/ast_venom_1.h"
 #include "assets/ast_venom_2.h"
@@ -1046,6 +1048,10 @@ void ObjSpecial_SetMatrix(Object* obj, f32 xRot, f32 yRot, f32 zRot, s32 drawTyp
 
 void Scenery_Draw(Scenery* this, s32 cullDirection) {
     CALL_CANCELLABLE_RETURN_EVENT(ObjectDrawPreSetupEvent, OBJECT_TYPE_SCENERY, this);
+    // @port: skip N64 terrain pieces the 3DS terrain already includes (drawing only)
+    if (Terrain3DS_HidesScenery(this->obj.id)) {
+        return;
+    }
     this->obj.pos.y += gCameraShakeY;
     Object_SetMatrix(&this->obj, this->info.drawType);
     this->obj.pos.y -= gCameraShakeY;
