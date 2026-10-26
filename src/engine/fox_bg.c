@@ -26,6 +26,7 @@
 
 void Terrain3DS_Draw(void);
 bool Terrain3DS_Active(void);
+bool Terrain3DS_ReplacesGround(void);
 // #include "prevent_bss_reordering3.h"
 
 #include "water_effect.inc"
@@ -1313,6 +1314,12 @@ void Background_DrawGround(void) {
     }
     if ((gCurrentLevel == LEVEL_BOLSE) && gBolseDynamicGround) {
         Bolse_DrawDynamicGround();
+        return;
+    }
+
+    // @port: the 3DS terrain mod brings its own static ground plane
+    if (Terrain3DS_ReplacesGround()) {
+        Terrain3DS_Draw();
         return;
     }
 

@@ -118,6 +118,14 @@ static const Terrain3DSLevel sTerrain3DSLevels[] = {
 };
 
 
+typedef struct { s32 level; const char* dl; f32 tile; } Terrain3DSFill;
+static const Terrain3DSFill sTerrain3DSFills[] = {
+    { LEVEL_CORNERIA, "__OTR__ast_sf3ds_gnd/corneria_fill", 15000.0f },
+    { LEVEL_MACBETH, "__OTR__ast_sf3ds_gnd/macbeth_fill", 15000.0f },
+    { LEVEL_TITANIA, "__OTR__ast_sf3ds_gnd/titania_fill", 15000.0f },
+    { LEVEL_VENOM_1, "__OTR__ast_sf3ds_gnd/venom_1_fill", 15000.0f },
+};
+
 #define TERRAIN3DS_FAR 40000.0f
 #define TERRAIN3DS_NEAR 4000.0f
 
@@ -150,6 +158,20 @@ static const Terrain3DSLevel* Terrain3DS_GetLevel(void) {
 
 bool Terrain3DS_Active(void) {
     return Terrain3DS_GetLevel() != NULL;
+}
+
+// True when the static 3DS ground plane replaces the N64 ground (not over water, where the N64 water surface stays).
+bool Terrain3DS_ReplacesGround(void) {
+    s32 i;
+    if (!Terrain3DS_Active() || (gGroundSurface == SURFACE_WATER)) {
+        return false;
+    }
+    for (i = 0; i < ARRAY_COUNT(sTerrain3DSFills); i++) {
+        if (sTerrain3DSFills[i].level == gCurrentLevel) {
+            return true;
+        }
+    }
+    return false;
 }
 
 static const s16 sHide_Corneria[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 24, 25, 26, 27, 28, 54, 55 };
@@ -224,7 +246,32 @@ void Terrain3DS_Draw(void) {
     if ((lv->hideAfter > 0.0f) && (gPathProgress > lv->hideAfter)) {
         return;
     }
+    // static ground plane (3DS ground texture) in place of the scrolling N64 ground, drawn as a depth-less backdrop
+    for (i = 0; i < ARRAY_COUNT(sTerrain3DSFills); i++) {
+        const Terrain3DSFill* f = &sTerrain3DSFills[i];
+        f32 camZ;
+        s32 gx, gz;
+        if ((f->level != gCurrentLevel) || (lv->allRange != 0) || (gGroundSurface == SURFACE_WATER)) {
+            continue;
+        }
+        RCP_SetupDL_20(gFogRed, gFogGreen, gFogBlue, gFogAlpha, gFogNear, gFogFar);
+        gSPClearGeometryMode(gMasterDisp++, G_LIGHTING | G_CULL_BACK);
+        camZ = floorf(-gPathProgress / f->tile) * f->tile;
+        for (gz = -1; gz <= 3; gz++) {
+            for (gx = -3; gx <= 3; gx++) {
+                Matrix_Push(&gGfxMatrix);
+                Matrix_Translate(gGfxMatrix, gx * f->tile, -3.0f + gCameraShakeY, camZ - gz * f->tile + gPathProgress,
+                                 MTXF_APPLY);
+                Matrix_SetGfxMtx(&gMasterDisp);
+                gSPDisplayList(gMasterDisp++, f->dl);
+                Matrix_Pop(&gGfxMatrix);
+            }
+        }
+    }
+
+    // the terrain is unlit on 3DS: its shading is baked into the vertex colours
     RCP_SetupDL_29(gFogRed, gFogGreen, gFogBlue, gFogAlpha, gFogNear, gFogFar);
+    gSPClearGeometryMode(gMasterDisp++, G_LIGHTING);
     for (i = 0; i < lv->count; i++) {
         Terrain3DS_DrawSector(&lv->secs[i], 0.0f);
     }
