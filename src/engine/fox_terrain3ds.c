@@ -275,7 +275,7 @@ void Terrain3DS_Draw(void) {
 
     // the terrain is unlit on 3DS: its shading is baked into the vertex colours
     RCP_SetupDL_29(gFogRed, gFogGreen, gFogBlue, gFogAlpha, gFogNear, gFogFar);
-    gSPClearGeometryMode(gMasterDisp++, G_LIGHTING);
+    gSPClearGeometryMode(gMasterDisp++, G_LIGHTING | G_CULL_BACK); // terrain is drawn two-sided on 3DS
     for (i = 0; i < lv->count; i++) {
         Terrain3DS_DrawSector(&lv->secs[i], 0.0f);
     }
