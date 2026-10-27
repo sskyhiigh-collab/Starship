@@ -150,6 +150,10 @@ static const Terrain3DSLevel* Terrain3DS_GetLevel(void) {
     if (sTerrain3DSCur == NULL) {
         return NULL;
     }
+    // only during actual gameplay (not the title screen / menus, where the default level is Corneria)
+    if (gGameState != GSTATE_PLAY) {
+        return NULL;
+    }
     if ((sTerrain3DSCur->allRange != 0) != (gLevelMode == LEVELMODE_ALL_RANGE)) {
         return NULL;
     }
