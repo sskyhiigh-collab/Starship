@@ -27,6 +27,7 @@
 void Terrain3DS_Draw(void);
 bool Terrain3DS_Active(void);
 bool Terrain3DS_ReplacesGround(void);
+bool Terrain3DS_DrawBeforeWater(void);
 // #include "prevent_bss_reordering3.h"
 
 #include "water_effect.inc"
@@ -1323,8 +1324,8 @@ void Background_DrawGround(void) {
         Terrain3DS_Draw();
         return;
     }
-    // @port: over Corneria's sea the terrain goes first, so the (depth-tested) N64 water covers what's submerged
-    terrain3DSFirst = Terrain3DS_Active() && (gCurrentLevel == LEVEL_CORNERIA) && (gGroundSurface == SURFACE_WATER);
+    // @port: over water the terrain goes first (per-level setting in the mod's config), so the (depth-tested) N64 water covers what's submerged
+    terrain3DSFirst = Terrain3DS_DrawBeforeWater();
     if (terrain3DSFirst) {
         Terrain3DS_Draw();
     }
