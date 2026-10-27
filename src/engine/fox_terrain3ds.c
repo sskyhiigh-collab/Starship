@@ -7,10 +7,10 @@ typedef struct { s32 level; s32 allRange; const Terrain3DSSector* secs; s32 coun
 
 static const Terrain3DSSector sTerrain3DS_Corneria[] = {
     { "__OTR__ast_sf3ds_gnd/corneria_01", 140.0f, -37820.0f, 1.0f, -43038.5f, -32602.3f },
-    { "__OTR__ast_sf3ds_gnd/corneria_02", -125.0f, -47440.0f, 1.0f, -52568.5f, -42311.5f },
-    { "__OTR__ast_sf3ds_gnd/corneria_03", -125.0f, -57655.0f, 1.0f, -62765.7f, -52544.3f },
-    { "__OTR__ast_sf3ds_gnd/corneria_04", -150.0f, -67895.0f, 1.0f, -73322.8f, -62467.2f },
-    { "__OTR__ast_sf3ds_gnd/corneria_05", -100.0f, -78060.0f, 1.0f, -83230.8f, -72889.2f },
+    { "__OTR__ast_sf3ds_gnd/corneria_02", 19.0f, -48072.0f, 1.0f, -53200.4f, -42943.4f },
+    { "__OTR__ast_sf3ds_gnd/corneria_03", 18.0f, -58308.0f, 1.0f, -63418.2f, -53196.8f },
+    { "__OTR__ast_sf3ds_gnd/corneria_04", 21.0f, -68049.0f, 1.0f, -73631.6f, -62467.2f },
+    { "__OTR__ast_sf3ds_gnd/corneria_05", 23.0f, -78388.0f, 1.0f, -83882.2f, -72893.6f },
     { "__OTR__ast_sf3ds_gnd/corneria_06", 23.0f, -88791.0f, 1.0f, -94397.3f, -83184.5f },
     { "__OTR__ast_sf3ds_gnd/corneria_07", 20.0f, -99202.0f, 1.0f, -104388.6f, -94014.7f },
     { "__OTR__ast_sf3ds_gnd/corneria_08", 8.0f, -109230.0f, 1.0f, -114501.1f, -103958.2f },
@@ -23,7 +23,6 @@ static const Terrain3DSSector sTerrain3DS_Corneria[] = {
     { "__OTR__ast_sf3ds_gnd/corneria_15", 2239.0f, -180875.0f, 1.0f, -186012.1f, -175738.1f },
     { "__OTR__ast_sf3ds_gnd/corneria_16", 2402.0f, -191125.0f, 1.0f, -196327.0f, -185923.0f },
     { "__OTR__ast_sf3ds_gnd/corneria_17", 4382.0f, -201295.0f, 1.0f, -206440.5f, -196149.5f },
-    { "__OTR__ast_sf3ds_gnd/corneria_18", 5833.0f, -211533.0f, 1.0f, -216641.6f, -206424.4f },
 };
 static const Terrain3DSSector sTerrain3DS_Macbeth[] = {
     { "__OTR__ast_sf3ds_gnd/macbeth_01", 0.0f, -2340.0f, 1.0f, -8100.0f, 3420.7f },
@@ -108,7 +107,7 @@ static const Terrain3DSSector sTerrain3DS_Training[] = {
 };
 
 static const Terrain3DSLevel sTerrain3DSLevels[] = {
-    { LEVEL_CORNERIA, 0, sTerrain3DS_Corneria, ARRAY_COUNT(sTerrain3DS_Corneria), 10215.0f, 1, 0.0f },
+    { LEVEL_CORNERIA, 0, sTerrain3DS_Corneria, ARRAY_COUNT(sTerrain3DS_Corneria), 10215.0f, 0, 0.0f },
     { LEVEL_MACBETH, 0, sTerrain3DS_Macbeth, ARRAY_COUNT(sTerrain3DS_Macbeth), 10215.0f, 0, 0.0f },
     { LEVEL_TITANIA, 0, sTerrain3DS_Titania, ARRAY_COUNT(sTerrain3DS_Titania), 10340.0f, 1, 0.0f },
     { LEVEL_AQUAS, 0, sTerrain3DS_Aquas, ARRAY_COUNT(sTerrain3DS_Aquas), 10215.0f, 0, 0.0f },
@@ -117,6 +116,11 @@ static const Terrain3DSLevel sTerrain3DSLevels[] = {
     { LEVEL_TRAINING, 1, sTerrain3DS_Training, ARRAY_COUNT(sTerrain3DS_Training), 15000.0f, 1, 0.0f },
 };
 
+// scrolling waterfall sheets (3DS: texture-animated), drawn separately so the tile offset can move
+typedef struct { s32 level; const char* mat[2]; const char* tri[2]; s32 n; s32 dw[2], dh[2]; f32 ox, oz, scale, zmin, zmax; } Terrain3DSFall;
+static const Terrain3DSFall sTerrain3DSFalls[] = {
+    { LEVEL_CORNERIA, { "__OTR__ast_sf3ds_gnd/corneria_14_wf_mat0", "__OTR__ast_sf3ds_gnd/corneria_14_wf_mat1" }, { "__OTR__ast_sf3ds_gnd/corneria_14_wf_tri0", "__OTR__ast_sf3ds_gnd/corneria_14_wf_tri1" }, 2, { 64, 64 }, { 64, 64 }, 304.0f, -171060.0f, 1.0f, -176573.4f, -165546.6f },
+};
 
 typedef struct { s32 level; const char* dl; f32 tile; } Terrain3DSFill;
 static const Terrain3DSFill sTerrain3DSFills[] = {
@@ -273,9 +277,13 @@ void Terrain3DS_Draw(void) {
         }
     }
 
-    // the terrain is unlit on 3DS: its shading is baked into the vertex colours
+    // lit with the level's sun direction; brighter ambient than the N64 object lighting so slopes facing away
+    // from the sun don't go black (the 3DS terrain has no dynamic lighting, only baked shading)
     RCP_SetupDL_29(gFogRed, gFogGreen, gFogBlue, gFogAlpha, gFogNear, gFogFar);
-    gSPClearGeometryMode(gMasterDisp++, G_LIGHTING | G_CULL_BACK); // terrain is drawn two-sided on 3DS
+    gSPClearGeometryMode(gMasterDisp++, G_CULL_BACK); // terrain is drawn two-sided on 3DS
+    Lights_SetOneLight(&gMasterDisp, gLight1x, gLight1y, gLight1z, MIN(255, gLight1R * 3 / 2), MIN(255, gLight1G * 3 / 2),
+                       MIN(255, gLight1B * 3 / 2), MIN(255, gAmbientR + 110), MIN(255, gAmbientG + 110),
+                       MIN(255, gAmbientB + 110));
     for (i = 0; i < lv->count; i++) {
         Terrain3DS_DrawSector(&lv->secs[i], 0.0f);
     }
@@ -283,5 +291,41 @@ void Terrain3DS_Draw(void) {
         for (k = 1; k <= 8; k++) {
             Terrain3DS_DrawSector(&lv->secs[lv->count - 1], -lv->length * k);
         }
+    }
+    // restore the scene lighting for whatever is drawn next
+    Lights_SetOneLight(&gMasterDisp, gLight1x, gLight1y, gLight1z, gLight1R, gLight1G, gLight1B, gAmbientR, gAmbientG,
+                       gAmbientB);
+
+    // waterfalls: unlit translucent sheets with the texture scrolling downwards
+    for (i = 0; i < ARRAY_COUNT(sTerrain3DSFalls); i++) {
+        const Terrain3DSFall* w = &sTerrain3DSFalls[i];
+        f32 zNear;
+        f32 zFar;
+        if ((w->level != gCurrentLevel) || (lv->allRange != 0)) {
+            continue;
+        }
+        zNear = w->zmax + gPathProgress;
+        zFar = w->zmin + gPathProgress;
+        if ((zFar > TERRAIN3DS_NEAR) || (zNear < -TERRAIN3DS_FAR)) {
+            continue;
+        }
+        RCP_SetupDL_29(gFogRed, gFogGreen, gFogBlue, gFogAlpha, gFogNear, gFogFar);
+        gSPClearGeometryMode(gMasterDisp++, G_LIGHTING | G_CULL_BACK);
+        gDPSetRenderMode(gMasterDisp++, G_RM_FOG_SHADE_A, G_RM_AA_ZB_XLU_SURF2);
+        Matrix_Push(&gGfxMatrix);
+        Matrix_Translate(gGfxMatrix, w->ox, -3.0f + gCameraShakeY, w->oz + gPathProgress, MTXF_APPLY);
+        if (w->scale != 1.0f) {
+            Matrix_Scale(gGfxMatrix, w->scale, w->scale, w->scale, MTXF_APPLY);
+        }
+        Matrix_SetGfxMtx(&gMasterDisp);
+        for (k = 0; k < w->n; k++) {
+            // texture T grows downwards on the falling sheet: a decreasing offset moves the streaks down
+            s32 period = w->dh[k] << 2;
+            s32 t = period - (((gGameFrameCount * (k == 0 ? 6 : 2)) % period));
+            gSPDisplayList(gMasterDisp++, w->mat[k]);
+            gDPSetTileSize(gMasterDisp++, G_TX_RENDERTILE, 0, t, (w->dw[k] - 1) << 2, t + ((w->dh[k] - 1) << 2));
+            gSPDisplayList(gMasterDisp++, w->tri[k]);
+        }
+        Matrix_Pop(&gGfxMatrix);
     }
 }

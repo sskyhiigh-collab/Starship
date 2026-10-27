@@ -1308,6 +1308,7 @@ void Background_DrawGround(void) {
     Gfx* sp1C0;
     f32 temp_fv1;
     f32 temp_fa0;
+    bool terrain3DSFirst;
 
     if ((gCurrentLevel != LEVEL_VENOM_2) && ((gPlayer[0].cam.eye.y > 4000.0f) || !gDrawGround)) {
         return;
@@ -1321,6 +1322,11 @@ void Background_DrawGround(void) {
     if (Terrain3DS_ReplacesGround()) {
         Terrain3DS_Draw();
         return;
+    }
+    // @port: over Corneria's sea the terrain goes first, so the (depth-tested) N64 water covers what's submerged
+    terrain3DSFirst = Terrain3DS_Active() && (gCurrentLevel == LEVEL_CORNERIA) && (gGroundSurface == SURFACE_WATER);
+    if (terrain3DSFirst) {
+        Terrain3DS_Draw();
     }
 
     sp1D4 = 0.0f;
@@ -2256,7 +2262,9 @@ void Background_DrawGround(void) {
     Matrix_Pop(&gGfxMatrix);
 
     // @port: Star Fox 64 3D terrain (only when the terrain mod is installed)
-    Terrain3DS_Draw();
+    if (!terrain3DSFirst) {
+        Terrain3DS_Draw();
+    }
 }
 
 // Unused. Early water implementation in Aquas?
