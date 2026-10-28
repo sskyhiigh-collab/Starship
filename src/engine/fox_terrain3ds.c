@@ -8,10 +8,12 @@
 //   level <id> <name> <rails|allrange> <sectorLength> <repeatLast 0/1> <hideAfter>
 //   sector <dl> <ox> <oz> <scale> <zmin> <zmax>
 //   fill <dl> <tileSize> <gridX> <gridZnear> <gridZfar>
-//   fall <dl> <ox> <oz> <scale> <zmin> <zmax> <parts 1-2> <texW> <texH> <speed> [<texW> <texH> <speed>]
+//   fall <dl> <ox> <oz> <scale> <zmin> <zmax> <parts 1-4> then <texW> <texH> <speed> per part
 //   hide <objId> <objId> ...
 //   waterfirst <0/1>          draw the terrain before the N64 water when the ground surface is water
-//   light <ambientAdd> <diffuseMul>
+//   light <ambientAdd> <diffuseMul>  dynamic lighting (only with lit 1)
+//   lit <0/1>                 0: shading baked into vertex colours (default), 1: lit with vertex normals
+//   water <rowsAhead> <halfColumns>  extra N64 water tiles ahead of / beside the default ones (over water only)
 //   global cull <near> <far>
 //   global yoffset <y>
 #include "global.h"
@@ -28,11 +30,11 @@ typedef struct {
 } T3DSSector;
 
 typedef struct {
-    const char* mat[2];
-    const char* tri[2];
+    const char* mat[4];
+    const char* tri[4];
     s32 n;
-    s32 dw[2], dh[2];
-    f32 speed[2];
+    s32 dw[4], dh[4];
+    f32 speed[4];
     f32 ox, oz, scale, zmin, zmax;
     s32 level;
 } T3DSFall;
@@ -53,6 +55,9 @@ typedef struct {
     s32 waterFirst;
     f32 ambientAdd;
     f32 diffuseMul;
+    s32 lit;
+    s32 waterRows;
+    s32 waterCols;
 } T3DSLevel;
 
 static T3DSLevel sLevels[T3DS_MAX_LEVELS];
@@ -143,19 +148,24 @@ static void T3DS_ParseLine(char* line) {
     } else if (!strcmp(cmd, "fall") && (sFallCount < T3DS_MAX_FALLS)) {
         T3DSFall* f = &sFalls[sFallCount];
         memset(f, 0, sizeof(*f));
-        if (sscanf(p, "%159s %f %f %f %f %f %d %d %d %f %d %d %f", a, &f->ox, &f->oz, &f->scale, &f->zmin, &f->zmax,
-                   &f->n, &f->dw[0], &f->dh[0], &f->speed[0], &f->dw[1], &f->dh[1], &f->speed[1]) >= 10) {
+        if (sscanf(p, "%159s %f %f %f %f %f %d%n", a, &f->ox, &f->oz, &f->scale, &f->zmin, &f->zmax, &f->n, &n) == 7) {
             s32 k;
-            f->n = CLAMP(f->n, 1, 2);
+            p += n;
+            f->n = CLAMP(f->n, 1, 4);
             f->level = lv->level;
             for (k = 0; k < f->n; k++) {
                 char sfx[8];
+                if (sscanf(p, "%d %d %f%n", &f->dw[k], &f->dh[k], &f->speed[k], &n) != 3) {
+                    f->n = k;
+                    break;
+                }
+                p += n;
                 sprintf(sfx, "_mat%d", k);
                 f->mat[k] = T3DS_Intern(a, sfx);
                 sprintf(sfx, "_tri%d", k);
                 f->tri[k] = T3DS_Intern(a, sfx);
             }
-            if ((f->mat[f->n - 1] != NULL) && (f->tri[f->n - 1] != NULL)) {
+            if ((f->n > 0) && (f->mat[f->n - 1] != NULL) && (f->tri[f->n - 1] != NULL)) {
                 sFallCount++;
             }
         }
@@ -167,6 +177,10 @@ static void T3DS_ParseLine(char* line) {
         }
     } else if (!strcmp(cmd, "waterfirst")) {
         sscanf(p, "%d", &lv->waterFirst);
+    } else if (!strcmp(cmd, "lit")) {
+        sscanf(p, "%d", &lv->lit);
+    } else if (!strcmp(cmd, "water")) {
+        sscanf(p, "%d %d", &lv->waterRows, &lv->waterCols);
     } else if (!strcmp(cmd, "light")) {
         sscanf(p, "%f %f", &lv->ambientAdd, &lv->diffuseMul);
     }
@@ -253,6 +267,17 @@ bool Terrain3DS_DrawBeforeWater(void) {
     return (lv != NULL) && lv->waterFirst && (gGroundSurface == SURFACE_WATER);
 }
 
+// Extra N64 water tiles (rows ahead, columns to each side) so the sea reaches the fog over the 3DS terrain.
+s32 Terrain3DS_WaterRows(void) {
+    const T3DSLevel* lv = Terrain3DS_GetLevel();
+    return (lv != NULL) ? lv->waterRows : 0;
+}
+
+s32 Terrain3DS_WaterCols(void) {
+    const T3DSLevel* lv = Terrain3DS_GetLevel();
+    return (lv != NULL) ? lv->waterCols : 0;
+}
+
 // N64 scenery that SF64 3D never draws on this level because its terrain already contains it.
 // Only drawing is skipped; collision and game logic are untouched.
 bool Terrain3DS_HidesScenery(s32 id) {
@@ -322,8 +347,13 @@ void Terrain3DS_Draw(void) {
     // lit with the level's sun direction; brighter ambient than the N64 object lighting so slopes facing away
     // from the sun don't go black
     RCP_SetupDL_29(gFogRed, gFogGreen, gFogBlue, gFogAlpha, gFogNear, gFogFar);
-    gSPClearGeometryMode(gMasterDisp++, G_CULL_BACK); // terrain is drawn two-sided on 3DS
-    Lights_SetOneLight(&gMasterDisp, gLight1x, gLight1y, gLight1z, MIN(255, (s32) (gLight1R * lv->diffuseMul)),
+    if (!lv->lit) {
+        // shading (3DS ambient occlusion, vertex tint and the level's sun direction) is baked into the vertex colours
+        gSPClearGeometryMode(gMasterDisp++, G_LIGHTING | G_CULL_BACK);
+    } else {
+        gSPClearGeometryMode(gMasterDisp++, G_CULL_BACK); // terrain is drawn two-sided on 3DS
+    }
+    if (lv->lit) Lights_SetOneLight(&gMasterDisp, gLight1x, gLight1y, gLight1z, MIN(255, (s32) (gLight1R * lv->diffuseMul)),
                        MIN(255, (s32) (gLight1G * lv->diffuseMul)), MIN(255, (s32) (gLight1B * lv->diffuseMul)),
                        MIN(255, (s32) (gAmbientR + lv->ambientAdd)), MIN(255, (s32) (gAmbientG + lv->ambientAdd)),
                        MIN(255, (s32) (gAmbientB + lv->ambientAdd)));
@@ -336,7 +366,7 @@ void Terrain3DS_Draw(void) {
         }
     }
     // restore the scene lighting for whatever is drawn next
-    Lights_SetOneLight(&gMasterDisp, gLight1x, gLight1y, gLight1z, gLight1R, gLight1G, gLight1B, gAmbientR, gAmbientG,
+    if (lv->lit) Lights_SetOneLight(&gMasterDisp, gLight1x, gLight1y, gLight1z, gLight1R, gLight1G, gLight1B, gAmbientR, gAmbientG,
                        gAmbientB);
 
     // waterfalls: unlit translucent sheets with the texture scrolling downwards

@@ -28,6 +28,8 @@ void Terrain3DS_Draw(void);
 bool Terrain3DS_Active(void);
 bool Terrain3DS_ReplacesGround(void);
 bool Terrain3DS_DrawBeforeWater(void);
+s32 Terrain3DS_WaterRows(void);
+s32 Terrain3DS_WaterCols(void);
 // #include "prevent_bss_reordering3.h"
 
 #include "water_effect.inc"
@@ -1496,6 +1498,26 @@ void Background_DrawGround(void) {
                 gSPDisplayList(gMasterDisp++, D_CO_601B640);
 
                 Matrix_Pop(&gGfxMatrix);
+
+                // @port: 3DS terrain mod: more water ahead / to the sides so the sea reaches the fog
+                if (gGroundSurface == SURFACE_WATER) {
+                    s32 wr = Terrain3DS_WaterRows();
+                    s32 wc = Terrain3DS_WaterCols();
+                    s32 row, col;
+                    for (row = 0; row <= wr; row++) {
+                        for (col = -MAX(1, wc); col <= MAX(1, wc); col++) {
+                            if ((row == 0) && (col >= -1) && (col <= 1)) {
+                                continue; // already drawn above
+                            }
+                            Matrix_Push(&gGfxMatrix);
+                            Matrix_Translate(gGfxMatrix, col * 8000.0f, 0.0f, -3000.0f - row * 6000.0f, MTXF_APPLY);
+                            Matrix_Scale(gGfxMatrix, 1.0f, 1.0f, 0.5f, MTXF_APPLY);
+                            Matrix_SetGfxMtx(&gMasterDisp);
+                            gSPDisplayList(gMasterDisp++, D_CO_601B640);
+                            Matrix_Pop(&gGfxMatrix);
+                        }
+                    }
+                }
             } else {
                 gGroundSurface = SURFACE_GRASS;
                 gBgColor = 0x845; // 8, 8, 32
