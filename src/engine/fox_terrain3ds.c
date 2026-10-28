@@ -325,21 +325,40 @@ void Terrain3DS_Draw(void) {
     }
     secs = &sSectors[lv->firstSector];
 
-    // static ground plane (3DS ground texture) in place of the scrolling N64 ground, drawn as a depth-less backdrop
+    // static ground plane (3DS ground texture) in place of the scrolling N64 ground.
+    // Under the terrain it is a depth-less backdrop (it can't cut through dips in the terrain); past the end of the
+    // terrain (boss areas) it is depth-tested like the N64 ground, so objects can sink into it.
     if ((lv->fillDl != NULL) && (lv->allRange == 0) && (gGroundSurface != SURFACE_WATER) && (lv->fillTile > 0.0f)) {
         f32 tile = lv->fillTile;
         f32 camZ = floorf(-gPathProgress / tile) * tile;
-        s32 gx, gz;
-        RCP_SetupDL_20(gFogRed, gFogGreen, gFogBlue, gFogAlpha, gFogNear, gFogFar);
-        gSPClearGeometryMode(gMasterDisp++, G_LIGHTING | G_CULL_BACK);
-        for (gz = -lv->fillGridNear; gz <= lv->fillGridFar; gz++) {
-            for (gx = -lv->fillGridX; gx <= lv->fillGridX; gx++) {
-                Matrix_Push(&gGfxMatrix);
-                Matrix_Translate(gGfxMatrix, gx * tile, sYOffset + gCameraShakeY, camZ - gz * tile + gPathProgress,
-                                 MTXF_APPLY);
-                Matrix_SetGfxMtx(&gMasterDisp);
-                gSPDisplayList(gMasterDisp++, (Gfx*) lv->fillDl);
-                Matrix_Pop(&gGfxMatrix);
+        f32 terrainEnd = 0.0f;
+        s32 gx, gz, pass;
+        for (i = 0; i < lv->sectorCount; i++) {
+            terrainEnd = MIN(terrainEnd, secs[i].zmin);
+        }
+        if (lv->repeatLast) {
+            terrainEnd = -1.0e30f;
+        }
+        for (pass = 0; pass < 2; pass++) {
+            if (pass == 0) {
+                RCP_SetupDL_20(gFogRed, gFogGreen, gFogBlue, gFogAlpha, gFogNear, gFogFar);
+            } else {
+                RCP_SetupDL_29(gFogRed, gFogGreen, gFogBlue, gFogAlpha, gFogNear, gFogFar);
+            }
+            gSPClearGeometryMode(gMasterDisp++, G_LIGHTING | G_CULL_BACK);
+            for (gz = -lv->fillGridNear; gz <= lv->fillGridFar; gz++) {
+                f32 centre = camZ - gz * tile;
+                s32 beyond = (centre + tile * 0.5f) < terrainEnd;
+                if (beyond != pass) {
+                    continue;
+                }
+                for (gx = -lv->fillGridX; gx <= lv->fillGridX; gx++) {
+                    Matrix_Push(&gGfxMatrix);
+                    Matrix_Translate(gGfxMatrix, gx * tile, sYOffset + gCameraShakeY, centre + gPathProgress, MTXF_APPLY);
+                    Matrix_SetGfxMtx(&gMasterDisp);
+                    gSPDisplayList(gMasterDisp++, (Gfx*) lv->fillDl);
+                    Matrix_Pop(&gGfxMatrix);
+                }
             }
         }
     }
