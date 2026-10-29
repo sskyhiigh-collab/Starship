@@ -27,6 +27,7 @@
 void Terrain3DS_Draw(void);
 bool Terrain3DS_Active(void);
 bool Terrain3DS_ReplacesGround(void);
+bool Backdrop_Draw(void);
 bool Terrain3DS_DrawBeforeWater(void);
 s32 Terrain3DS_WaterRows(void);
 s32 Terrain3DS_WaterCols(void);
@@ -215,6 +216,11 @@ void Background_DrawStarfield(void) {
     float vx;
     float vy;
     const float STAR_MARGIN = 40.0f; // Margin to hide seam stars
+
+    // @port: space backdrop mod (sky sphere + nebulae) replaces / underlays the star dots when installed
+    if (Backdrop_Draw()) {
+        return;
+    }
 
     // Set projection to orthographic before drawing stars
     Lib_InitOrtho(&gMasterDisp);
