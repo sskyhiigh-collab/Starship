@@ -13,6 +13,7 @@
 //   waterfirst <0/1>          draw the terrain before the N64 water when the ground surface is water
 //   light <ambientAdd> <diffuseMul>  dynamic lighting (only with lit 1)
 //   lit <0/1>                 0: shading baked into vertex colours (default), 1: lit with vertex normals
+//   fog <r> <g> <b> <start> <end>  per-level fog override; start/end are world distances from the camera
 //   water <rowsAhead> <halfColumns>  extra N64 water tiles ahead of / beside the default ones (over water only)
 //   global cull <near> <far>
 //   global yoffset <y>
@@ -56,6 +57,9 @@ typedef struct {
     f32 ambientAdd;
     f32 diffuseMul;
     s32 lit;
+    s32 fogOn;
+    s32 fogR, fogG, fogB;
+    f32 fogStart, fogEnd;
     s32 waterRows;
     s32 waterCols;
 } T3DSLevel;
@@ -177,6 +181,8 @@ static void T3DS_ParseLine(char* line) {
         }
     } else if (!strcmp(cmd, "waterfirst")) {
         sscanf(p, "%d", &lv->waterFirst);
+    } else if (!strcmp(cmd, "fog")) {
+        lv->fogOn = (sscanf(p, "%d %d %d %f %f", &lv->fogR, &lv->fogG, &lv->fogB, &lv->fogStart, &lv->fogEnd) == 5);
     } else if (!strcmp(cmd, "lit")) {
         sscanf(p, "%d", &lv->lit);
     } else if (!strcmp(cmd, "water")) {
@@ -423,4 +429,29 @@ void Terrain3DS_Draw(void) {
         }
         Matrix_Pop(&gGfxMatrix);
     }
+}
+
+// Per-level fog override (e.g. Aquas' thick underwater fog). Called once per frame before the world is drawn.
+// The start/end distances are converted to the N64 fog range for the current projection, so they stay the same
+// whatever the Draw Distance setting.
+void Terrain3DS_ApplyFog(void) {
+    const T3DSLevel* lv = Terrain3DS_GetLevel();
+    f32 n;
+    f32 f;
+    f32 zs;
+    f32 ze;
+
+    if ((lv == NULL) || !lv->fogOn) {
+        return;
+    }
+    n = gProjectNear;
+    f = gProjectFar * CLAMP(CVarGetFloat("gDrawDistanceMul", 1.0f), 1.0f, 8.0f);
+    zs = (f + n) / (f - n) - (2.0f * f * n) / ((f - n) * MAX(lv->fogStart, n + 1.0f));
+    ze = (f + n) / (f - n) - (2.0f * f * n) / ((f - n) * MAX(lv->fogEnd, lv->fogStart + 1.0f));
+    gFogRed = lv->fogR;
+    gFogGreen = lv->fogG;
+    gFogBlue = lv->fogB;
+    gFogNear = (s32) CLAMP(500.0f * (1.0f + zs), 0.0f, 999.0f);
+    gFogFar = (s32) CLAMP(500.0f * (1.0f + ze), (f32) gFogNear + 1.0f, 1000.0f);
+    gBgColor = (((lv->fogR >> 3) & 0x1F) << 11) | (((lv->fogG >> 3) & 0x1F) << 6) | (((lv->fogB >> 3) & 0x1F) << 1) | 1;
 }

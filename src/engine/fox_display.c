@@ -11,6 +11,7 @@
 
 bool Terrain3DS_Active(void);
 void Terrain3DS_Draw(void);
+void Terrain3DS_ApplyFog(void);
 void Backdrop_SetView(f32 eyeX, f32 eyeY, f32 eyeZ, f32 atX, f32 atY, f32 atZ, f32 upX, f32 upY, f32 upZ);
 
 // f32 path1 = 0.0f;
@@ -1908,6 +1909,8 @@ void Display_Update(void) {
     Matrix_Push(&gGfxMatrix);
     Matrix_LookAt(gGfxMatrix, gPlayCamEye.x, gPlayCamEye.y, gPlayCamEye.z, gPlayCamAt.x, gPlayCamAt.y, gPlayCamAt.z,
                   playerCamUp.x, playerCamUp.y, playerCamUp.z, MTXF_APPLY);
+    // @port: per-level fog override from the 3DS terrain mod (e.g. Aquas underwater fog)
+    Terrain3DS_ApplyFog();
 
     if ((gLevelType == LEVELTYPE_PLANET) || (gCurrentLevel == LEVEL_BOLSE)) {
         if ((gCurrentLevel == LEVEL_TITANIA) &&
