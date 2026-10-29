@@ -87,7 +87,9 @@ void Lib_InitPerspective(Gfx** dList) {
 
     FrameInterpolation_RecordOpenChild("perspective", 0);
     FrameInterpolation_RecordMarker(__FILE__, __LINE__);
-    guPerspective(gGfxMtx, &norm, gFovY, (f32) SCREEN_WIDTH / SCREEN_HEIGHT, gProjectNear, gProjectFar, 1.0f);
+    // @port: Enhancements > Draw Distance pushes the far plane out (1x = original)
+    f32 farMul = CLAMP(CVarGetFloat("gDrawDistanceMul", 1.0f), 1.0f, 8.0f);
+    guPerspective(gGfxMtx, &norm, gFovY, (f32) SCREEN_WIDTH / SCREEN_HEIGHT, gProjectNear, gProjectFar * farMul, 1.0f);
     gSPPerspNormalize((*dList)++, norm);
     gSPMatrix((*dList)++, gGfxMtx++, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
     guLookAt(gGfxMtx, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -12800.0f, 0.0f, 1.0f, 0.0f);

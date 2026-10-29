@@ -790,6 +790,11 @@ void DrawDebugMenu() {
             .tooltip = "Press L in the Expert Sound options to play sound effects from the game"
         });
 
+        UIWidgets::CVarSliderFloat("Draw Distance", "gDrawDistanceMul", 1.0f, 4.0f, 1.0f, {
+            .tooltip = "Pushes the far clipping plane out and spawns level scenery earlier (1x = original). "
+                       "Enemies and events keep their original timing.",
+            .format = "%.1fx",
+        });
         UIWidgets::CVarCheckbox("Disable Starfield interpolation", "gDisableStarsInterpolation", {
             .tooltip = "Disable starfield interpolation to increase performance on slower CPUs"
         });

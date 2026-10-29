@@ -298,7 +298,7 @@ static void Terrain3DS_DrawSector(const T3DSSector* s, f32 zShift) {
     f32 zNear = s->zmax + zShift + gPathProgress;
     f32 zFar = s->zmin + zShift + gPathProgress;
 
-    if ((zFar > sCullNear) || (zNear < -sCullFar)) {
+    if ((zFar > sCullNear) || (zNear < -sCullFar * CLAMP(CVarGetFloat("gDrawDistanceMul", 1.0f), 1.0f, 8.0f))) {
         return;
     }
     Matrix_Push(&gGfxMatrix);
@@ -398,7 +398,7 @@ void Terrain3DS_Draw(void) {
         }
         zNear = w->zmax + gPathProgress;
         zFar = w->zmin + gPathProgress;
-        if ((zFar > sCullNear) || (zNear < -sCullFar)) {
+        if ((zFar > sCullNear) || (zNear < -sCullFar * CLAMP(CVarGetFloat("gDrawDistanceMul", 1.0f), 1.0f, 8.0f))) {
             continue;
         }
         RCP_SetupDL_29(gFogRed, gFogGreen, gFogBlue, gFogAlpha, gFogNear, gFogFar);

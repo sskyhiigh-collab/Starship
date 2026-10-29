@@ -544,6 +544,9 @@ void func_enmy_80062568(void) {
     }
 }
 
+// @port: level-object entries spawned early by the draw-distance look-ahead (bit per entry)
+static u8 sPreSpawned[4096 / 8];
+
 void Object_LoadLevelObjects(void) {
     ObjectInit* objInit;
     f32 xMax;
@@ -597,8 +600,57 @@ void Object_LoadLevelObjects(void) {
 
     gLastPathChange = 0;
 
+    // @port: Enhancements > Draw Distance. Static scenery further down the list is spawned early (enemies and events
+    // keep their original timing). Entries spawned early are remembered so the normal pass below skips them.
+    {
+        static ObjectInit* sAheadList = NULL;
+        static s32 sAheadIndex = 0;
+        static s32 sLastLoadIndex = 0;
+        f32 lookAhead = (CLAMP(CVarGetFloat("gDrawDistanceMul", 1.0f), 1.0f, 8.0f) - 1.0f) * 12800.0f;
+        s32 k;
+        s32 freeSlots;
+
+        if ((sAheadList != gLevelObjects) || (gObjectLoadIndex < sLastLoadIndex)) {
+            // new level, new object list or restarted from a checkpoint
+            sAheadList = gLevelObjects;
+            sAheadIndex = gObjectLoadIndex;
+            memset(sPreSpawned, 0, sizeof(sPreSpawned));
+        }
+        sLastLoadIndex = gObjectLoadIndex;
+        if (sAheadIndex < gObjectLoadIndex) {
+            sAheadIndex = gObjectLoadIndex;
+        }
+        if ((lookAhead > 0.0f) && (gLevelMode == LEVELMODE_ON_RAILS)) {
+            for (freeSlots = 0, k = 0; k < ARRAY_COUNT(gScenery); k++) {
+                freeSlots += (gScenery[k].obj.status == OBJ_FREE);
+            }
+            for (k = 0; (k < 64) && (sAheadIndex < 4096); k++) {
+                ObjectInit* ahead = &gLevelObjects[sAheadIndex];
+                if ((ahead->id <= OBJ_INVALID) || (ahead->zPos1 > gPathProgress + 200.0f + lookAhead)) {
+                    break;
+                }
+                // keep spare scenery slots for the normal pass so nothing that matters can be dropped
+                if ((ahead->id < OBJ_SCENERY_MAX) && (freeSlots > 12)) {
+                    Object_Load(ahead, xMax, xMin, yMax, yMin);
+                    sPreSpawned[sAheadIndex >> 3] |= 1 << (sAheadIndex & 7);
+                    freeSlots--;
+                } else if ((ahead->id < OBJ_SCENERY_MAX) && (freeSlots <= 12)) {
+                    break; // retry next frame, in order
+                }
+                sAheadIndex++;
+            }
+        }
+    }
+
     for (i = 0, objInit = &gLevelObjects[gObjectLoadIndex]; i < 10000; i++, gObjectLoadIndex++, objInit++) {
         if (objInit->id <= OBJ_INVALID) {
+            break;
+        }
+        if ((gObjectLoadIndex < 4096) && (objInit->id < OBJ_SCENERY_MAX) &&
+            (sPreSpawned[gObjectLoadIndex >> 3] & (1 << (gObjectLoadIndex & 7)))) {
+            if (objInit->zPos1 <= gPathProgress + 200.0f) {
+                continue; // already spawned early
+            }
             break;
         }
         if ((gPathProgress <= objInit->zPos1) && (objInit->zPos1 <= gPathProgress + 200.0f)) {
