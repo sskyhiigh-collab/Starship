@@ -63,3 +63,4 @@ modtools/out/
 modtools/third_party/
 modtools/data/catalog.pkl
 **/__pycache__/
+!modtools/**/build*.py
