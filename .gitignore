@@ -58,7 +58,8 @@ src/eu/
 src/cn/
 
 properties.h
-mods*/tools/out/
-tools/third_party/
-tools/data/catalog.pkl
+mods*/
+modtools/out/
+modtools/third_party/
+modtools/data/catalog.pkl
 **/__pycache__/

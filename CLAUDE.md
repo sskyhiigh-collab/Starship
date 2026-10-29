@@ -1,7 +1,7 @@
 # Starship modding fork — handoff notes
 
 This fork (branch `terrain-3ds`) extends Starship (SF64 PC port, v2.0.0 "Barnard Alfa", base cb19785) with runtime
-systems for a set of personal `.o2r` mods, plus the Python tools in `tools/` that build those mods from the
+systems for a set of personal `.o2r` mods, plus the Python tools in `modtools/` that build those mods from the
 user's own game dumps (Star Fox 64 3D RomFS, Star Fox Zero content, Starship's `sf64.o2r`).
 
 ## The user and how to work
@@ -19,11 +19,11 @@ user's own game dumps (Star Fox 64 3D RomFS, Star Fox Zero content, Starship's `
 - Game: GitHub Actions "GenerateBuilds" on this branch, or locally per Starship's own build docs (Windows: VS 2022
   build tools + CMake). Quick syntax check used so far (Linux):
   `gcc -fsyntax-only -w -Werror=implicit-function-declaration -std=gnu11 -DF3DEX_GBI=1 -DGBI_FLOATS -D_LANGUAGE_C -DNON_MATCHING -DAVOID_UB -I include -I src -I . -I <build>/ -I libultraship/include -I libultraship/include/libultraship -I libultraship/src -I libultraship/src/public -I libultraship/extern -I libultraship/src/public/libultra <file.c>`
-- Tools: Python 3.11+, `pip install numpy scipy pillow`; `git clone https://github.com/aboood40091/GTX-Extractor tools/third_party/GTX-Extractor`.
-  Set `SF_ROOT` (default `C:\Users\shaya\Documents\apollo\star fox 64 3d model port`); outputs go to `tools/out` (`SF_OUT`).
-  First run: `python tools/sf3ds/catalog.py` (writes `tools/data/catalog.pkl`, the SF64 3D resource index; not in git).
+- Tools: Python 3.11+, `pip install numpy scipy pillow`; `git clone https://github.com/aboood40091/GTX-Extractor modtools/third_party/GTX-Extractor`.
+  Set `SF_ROOT` (default `C:\Users\shaya\Documents\apollo\star fox 64 3d model port`); outputs go to `modtools/out` (`SF_OUT`).
+  First run: `python modtools/sf3ds/catalog.py` (writes `modtools/data/catalog.pkl`, the SF64 3D resource index; not in git).
 
-| Mod | Command (from `tools/`) |
+| Mod | Command (from `modtools/`) |
 |---|---|
 | 3 SF64 3D Models | `python sf3ds/build_models.py "out/3 SF64 3D Models.o2r"` (mapping: `data/final_map.json`, `TMPL:<name>` = city building template from the terrain) |
 | 4 SF64 3D Terrain | `python sf3ds/gen_ground.py "out/4 SF64 3D Terrain.o2r"` then `python sf3ds/gen_cfg.py "out/4 SF64 3D Terrain.o2r"` |
