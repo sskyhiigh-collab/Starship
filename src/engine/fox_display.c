@@ -11,6 +11,7 @@
 
 bool Terrain3DS_Active(void);
 void Terrain3DS_Draw(void);
+void Backdrop_SetView(f32 eyeX, f32 eyeY, f32 eyeZ, f32 atX, f32 atY, f32 atZ, f32 upX, f32 upY, f32 upZ);
 
 // f32 path1 = 0.0f;
 // f32 path2 = 0.0f;
@@ -1893,6 +1894,9 @@ void Display_Update(void) {
     if (gStarCount != 0) {
         gStarfieldRoll = DEG_TO_RAD(gPlayer[0].camRoll);
         Camera_SetStarfieldPos(gPlayCamEye.x, gPlayCamEye.y, gPlayCamEye.z, gPlayCamAt.x, gPlayCamAt.y, gPlayCamAt.z);
+        // @port: exact camera orientation for the space backdrop mod
+        Backdrop_SetView(gPlayCamEye.x, gPlayCamEye.y, gPlayCamEye.z, gPlayCamAt.x, gPlayCamAt.y, gPlayCamAt.z,
+                         playerCamUp.x, playerCamUp.y, playerCamUp.z);
         Background_DrawStarfield();
     }
 

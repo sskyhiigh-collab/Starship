@@ -34,6 +34,20 @@ static s8 sMenuBackdrop = -1;
 static s32 sKeepDots = 0;
 static f32 sRollSign = 1.0f;
 static s32 sBackdropLoaded = 0;
+// camera view direction / up for this frame (set by the display code right before the starfield is drawn)
+static f32 sViewDir[3] = { 0.0f, 0.0f, -1.0f };
+static f32 sViewUp[3] = { 0.0f, 1.0f, 0.0f };
+static s32 sViewFrame = -1;
+
+void Backdrop_SetView(f32 eyeX, f32 eyeY, f32 eyeZ, f32 atX, f32 atY, f32 atZ, f32 upX, f32 upY, f32 upZ) {
+    sViewDir[0] = atX - eyeX;
+    sViewDir[1] = atY - eyeY;
+    sViewDir[2] = atZ - eyeZ;
+    sViewUp[0] = upX;
+    sViewUp[1] = upY;
+    sViewUp[2] = upZ;
+    sViewFrame = gGameFrameCount;
+}
 
 static Gfx sBackdropSetupDL[] = {
     gsDPPipeSync(),
@@ -161,23 +175,19 @@ bool Backdrop_Draw(void) {
     Lib_InitPerspective(&gMasterDisp);
     gSPDisplayList(gMasterDisp++, sBackdropSetupDL);
 
-    // Orientation: in gameplay the sky follows the camera exactly; elsewhere it follows the starfield scroll
-    // (one full screen of scroll = one full turn), which is what the menus animate.
-    if ((gGameState == GSTATE_PLAY) && (gPlayer != NULL)) {
-        f32 dx = gPlayer[0].cam.at.x - gPlayer[0].cam.eye.x;
-        f32 dy = gPlayer[0].cam.at.y - gPlayer[0].cam.eye.y;
-        f32 dz = gPlayer[0].cam.at.z - gPlayer[0].cam.eye.z;
-        yaw = Math_Atan2F(dx, -dz);
-        pitch = Math_Atan2F(dy, sqrtf(SQ(dx) + SQ(dz)));
+    Matrix_Push(&gGfxMatrix);
+    if ((gGameState == GSTATE_PLAY) && (sViewFrame >= 0)) {
+        // gameplay: exactly the game camera's rotation (no translation), so the sky behaves like a real skybox
+        Matrix_LookAt(gGfxMatrix, 0.0f, 0.0f, 0.0f, sViewDir[0], sViewDir[1], sViewDir[2], sViewUp[0], sViewUp[1],
+                      sViewUp[2], MTXF_APPLY);
     } else {
+        // elsewhere: follow the starfield scroll (one screen of scroll = one full turn)
         yaw = gStarfieldX / MAX(1.0f, gCurrentScreenWidth) * 2.0f * M_PI;
         pitch = gStarfieldY / MAX(1.0f, gCurrentScreenHeight) * 0.25f * M_PI;
+        Matrix_RotateZ(gGfxMatrix, sRollSign * gStarfieldRoll, MTXF_NEW);
+        Matrix_RotateX(gGfxMatrix, pitch, MTXF_APPLY);
+        Matrix_RotateY(gGfxMatrix, yaw, MTXF_APPLY);
     }
-
-    Matrix_Push(&gGfxMatrix);
-    Matrix_RotateZ(gGfxMatrix, sRollSign * gStarfieldRoll, MTXF_NEW);
-    Matrix_RotateX(gGfxMatrix, pitch, MTXF_APPLY);
-    Matrix_RotateY(gGfxMatrix, yaw, MTXF_APPLY);
     Matrix_SetGfxMtx(&gMasterDisp);
 
     gSPDisplayList(gMasterDisp++, (Gfx*) bd->sky);
